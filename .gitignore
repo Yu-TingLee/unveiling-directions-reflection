@@ -1,8 +1,6 @@
 __pycache__/
 venv/
 visualize/
-mymodels/
-mymodel/**/__pycache__/*
 mytasks/**/__pycache__/*
 mytasks/**/wait_token_*.txt
 visualize_test/*

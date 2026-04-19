@@ -13,12 +13,12 @@ export HF_TOKEN="<YOUR_TOKEN_HERE>"
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+python -c "import nltk; nltk.download('wordnet'); nltk.download('omw-1.4')"
 ```
 
 ## Run experiments
 
 
 ```sh
-python setup_models.py
 bash run_experiments.sh
 ```

@@ -59,7 +59,7 @@ def _avg_score(input_dir, w_list, limit):
 def _plot_exp3(input_dir, steer_dir, output_dir, s_limit, limit, dataset_name, ymax, model_name):
     os.makedirs(output_dir, exist_ok=True)
 
-    model_map = {"MyQwen2.5-3B": "Qwen2.5-3B", "MyGemma-3-4B-it": "Gemma3-4B"}
+    model_map = {"Qwen2.5-3B": "Qwen2.5-3B", "Gemma-3-4B-it": "Gemma3-4B"}
 
     for top_k in [3, 5, 8]:
         plot_data = []
@@ -136,8 +136,8 @@ def _plot_exp4(dataset_name, input_dir, output_dir, ymax, limit, model_name):
         -1: ["Alternatively", "Check", "#", "%"],
     }
 
-    model_map = {"MyQwen2.5-3B": "Qwen2.5-3B", "MyGemma-3-4B-it": "Gemma3-4B"}
-    max_layers = {"MyQwen2.5-3B": 35, "MyGemma-3-4B-it": 33}
+    model_map = {"Qwen2.5-3B": "Qwen2.5-3B", "Gemma-3-4B-it": "Gemma3-4B"}
+    max_layers = {"Qwen2.5-3B": 35, "Gemma-3-4B-it": 33}
 
     for s, start_types in skey_stype.items():
         if s == 1:
@@ -196,25 +196,25 @@ def _plot_exp4(dataset_name, input_dir, output_dir, ymax, limit, model_name):
 def run():
     parser = argparse.ArgumentParser()
     parser.add_argument("--visualize_dir", type=str, default="visualize")
-    parser.add_argument("--model_names", nargs="+", default=["MyQwen2.5-3B", "MyGemma-3-4B-it"])
+    parser.add_argument("--model_names", nargs="+", default=["Qwen2.5-3B", "Gemma-3-4B-it"])
     parser.add_argument("--dataset_names", nargs="+", default=["gsm8k_adv", "cruxeval_o_adv"])
     parser.add_argument("--s_limit", type=int, default=200)
     parser.add_argument("--limits", nargs="+", type=int, default=[2000, 500])
     parser.add_argument("--ymax_config", type=str, default=None,
-                        help='JSON dict mapping "model,dataset" to ymax, e.g. \'{"MyQwen2.5-3B,gsm8k_adv": 0.6}\'')
+                        help='JSON dict mapping "model,dataset" to ymax, e.g. \'{"Qwen2.5-3B,gsm8k_adv": 0.6}\'')
     args = parser.parse_args()
 
     default_ymax_exp3 = {
-        ("MyQwen2.5-3B",  "gsm8k_adv"):      0.6,
-        ("MyGemma-3-4B-it", "gsm8k_adv"):      0.9,
-        ("MyQwen2.5-3B",  "cruxeval_o_adv"): 0.2,
-        ("MyGemma-3-4B-it", "cruxeval_o_adv"): 0.4,
+        ("Qwen2.5-3B",  "gsm8k_adv"):      0.6,
+        ("Gemma-3-4B-it", "gsm8k_adv"):      0.9,
+        ("Qwen2.5-3B",  "cruxeval_o_adv"): 0.2,
+        ("Gemma-3-4B-it", "cruxeval_o_adv"): 0.4,
     }
     default_ymax_exp4 = {
-        ("MyQwen2.5-3B",  "gsm8k_adv"):      0.6,
-        ("MyGemma-3-4B-it", "gsm8k_adv"):      0.9,
-        ("MyQwen2.5-3B",  "cruxeval_o_adv"): 0.13,
-        ("MyGemma-3-4B-it", "cruxeval_o_adv"): 0.5,
+        ("Qwen2.5-3B",  "gsm8k_adv"):      0.6,
+        ("Gemma-3-4B-it", "gsm8k_adv"):      0.9,
+        ("Qwen2.5-3B",  "cruxeval_o_adv"): 0.13,
+        ("Gemma-3-4B-it", "cruxeval_o_adv"): 0.5,
     }
 
     if args.ymax_config:

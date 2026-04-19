@@ -10,6 +10,7 @@ import torch
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from utils import doc_to_text, cosine_sim, cot_preprocess
+from steering_hooks import get_layers, get_embed_tokens
 
 
 def init_model_hook_hidden_states(model):
@@ -19,21 +20,19 @@ def init_model_hook_hidden_states(model):
         return get_hidden_states
 
     hidden_states = defaultdict(list)
-    if "Qwen" in model.__str__():
-        for k, model_layer_k in enumerate(list(model.model.layers)):
-            model_layer_k.register_forward_hook(gen_hook_func_hidden_states(layer_idx=k, hidden_states=hidden_states))
-    elif "Gemma3" in model.__str__():
-        for k, model_layer_k in enumerate(list(model.model.language_model.layers)):
-            model_layer_k.register_forward_hook(gen_hook_func_hidden_states(layer_idx=k, hidden_states=hidden_states))
+    for k, layer in enumerate(get_layers(model)):
+        layer.register_forward_hook(
+            gen_hook_func_hidden_states(layer_idx=k, hidden_states=hidden_states)
+        )
     return hidden_states
 
 
 def init_model(args, hook_hidden=True):
     hf_kwargs = {"trust_remote_code": True}
-    if args.cache_dir:
+    if getattr(args, "cache_dir", None):
         hf_kwargs["cache_dir"] = args.cache_dir
     tokenizer = AutoTokenizer.from_pretrained(args.model_name, **hf_kwargs)
-    model = AutoModelForCausalLM.from_pretrained(args.model_name, ignore_mismatched_sizes=True, **hf_kwargs)
+    model = AutoModelForCausalLM.from_pretrained(args.model_name, **hf_kwargs)
 
     if hook_hidden:
         hidden_states = init_model_hook_hidden_states(model)
@@ -55,20 +54,14 @@ def get_embed(args, model, tokenizer, json_items, wait_token_1s, wait_token_2s):
               for w1 in wait_token_1s]
 
 
-    if "Qwen" in model.__str__():
-        w1_embeds = model.model.embed_tokens.forward(torch.Tensor(w1_ids).to(int).to(model.device)).cpu().detach().float().numpy()
-    else:
-        w1_embeds = model.model.language_model.embed_tokens.forward(torch.Tensor(w1_ids).to(int).to(model.device)).cpu().detach().float().numpy()
-
+    embed_tokens = get_embed_tokens(model)
+    w1_embeds = embed_tokens(torch.Tensor(w1_ids).to(int).to(model.device)).cpu().detach().float().numpy()
 
     if len(wait_token_2s) > 0:
         w2_ids = [[tokenizer.encode(cot_preprocess(doc_to_text(json_item, json_item["cot_messy"], wait_token=w2)))[-wait_pos_1]]
                   for w2 in wait_token_2s]
 
-        if "Qwen" in model.__str__():
-            w2_embeds = model.model.embed_tokens.forward(torch.Tensor(w2_ids).to(int).to(model.device)).cpu().detach().float().numpy()
-        else:
-            w2_embeds = model.model.language_model.embed_tokens.forward(torch.Tensor(w2_ids).to(int).to(model.device)).cpu().detach().float().numpy()
+        w2_embeds = embed_tokens(torch.Tensor(w2_ids).to(int).to(model.device)).cpu().detach().float().numpy()
 
         wvecs = []
         for w1_embed in w1_embeds:
@@ -157,7 +150,7 @@ def get_forward(args, model, tokenizer, json_items, hidden_states, selected_laye
                     w1_embed = embed_w1[layer][ikey]
                     for w2_embed in embed_w2[layer]:
                         norm += 1
-                        wvec += np.array(w1_embed[-wait_pos_1:].flatten() - w2_embed[-wait_pos_1:].flatten())
+                        wvec += np.array(w1_embed[-wait_pos_1] - w2_embed[-wait_pos_1])
                     wvecs.append(wvec/norm)
                 output[layer] += np.array(wvecs)*(1/limit)
         else:
@@ -165,7 +158,7 @@ def get_forward(args, model, tokenizer, json_items, hidden_states, selected_laye
                 wvecs = []
                 for ikey in range(len(wait_token_1s)):
                     w1_embed = embed_w1[layer][ikey]
-                    wvec = np.array(w1_embed[-wait_pos_1:].flatten())
+                    wvec = np.array(w1_embed[-wait_pos_1])
                     wvecs.append(wvec)
                 output[layer] += np.array(wvecs)*(1/limit)
         success_sample += 1
@@ -187,10 +180,8 @@ def get_embed_sim(args, model, tokenizer, hidden_states, output_dir):
 
     if args.is_baseline:
         selected_layers = []
-    elif "Qwen" in model.__str__():
-        selected_layers = list(range(model.model.config.num_hidden_layers))
     else:
-        selected_layers = list(range(len(model.model.language_model.layers)))
+        selected_layers = list(range(len(get_layers(model))))
 
     wait_token_1s = args.wait_token_1#["Wait", "Alternatively", "Check"]
     wait_token_2s = args.wait_token_2#[]

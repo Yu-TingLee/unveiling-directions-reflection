@@ -4,6 +4,7 @@ import re
 import numpy as np
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from steering_hooks import get_layers
 
 
 def cosine_sim(vec1, vec2):
@@ -117,22 +118,26 @@ def preprocess_for_error_pos(json_item, tokenizer, wait_token_1="Wait", wait_tok
 def init_model_hook_attention_func(model):
     def gen_hook_func(layer_idx, attention_scores):
         def get_attention_scores(module, input, output):
-            # Outputs in the form (hidden_states, attentions)
             attention_scores[layer_idx].append(output[1])
-
         return get_attention_scores
+
     attention_scores = defaultdict(list)
-    for k, model_layer_k in enumerate(list(model.model.layers)):
-        model_layer_k.self_attn.config._attn_implementation = 'eager'
-        model_layer_k.self_attn.register_forward_hook(gen_hook_func(layer_idx=k, attention_scores=attention_scores))
+    for k, layer in enumerate(get_layers(model)):
+        layer.self_attn.config._attn_implementation = "eager"
+        layer.self_attn.register_forward_hook(
+            gen_hook_func(layer_idx=k, attention_scores=attention_scores)
+        )
     return attention_scores
 
 
 def init_model(args, hook_attention=True):
-    tokenizer = AutoTokenizer.from_pretrained(args.model_dir, trust_remote_code=True, local_files_only=True)
-    # Load the model
-    model = AutoModelForCausalLM.from_pretrained(args.model_dir, trust_remote_code=True, ignore_mismatched_sizes=True,
-                                                 local_files_only=True)
+    hf_kwargs = {"trust_remote_code": True}
+    if getattr(args, "cache_dir", None):
+        hf_kwargs["cache_dir"] = args.cache_dir
+
+    tokenizer = AutoTokenizer.from_pretrained(args.model_dir, **hf_kwargs)
+    model = AutoModelForCausalLM.from_pretrained(args.model_dir, **hf_kwargs)
+
     if hook_attention:
         attention_scores = init_model_hook_attention_func(model)
     else:
