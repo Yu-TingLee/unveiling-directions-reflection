@@ -2,7 +2,7 @@
 
 This repository contains an implementation for the paper **Unveiling the Latent Directions of Reflection in Large Language Models**. [https://arxiv.org/abs/2508.16989](https://arxiv.org/abs/2508.16989)
 
-TL;DR: We show that LLM reflection can be categorized into three levels and can be controlled using activation steering.
+**TL;DR:** We show that LLM reflection can be categorized into three levels and can be controlled using activation steering.
 
 ## Run experiments
 If you use gated Hugging Face models, export your token first:
